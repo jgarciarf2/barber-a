@@ -69,7 +69,7 @@ La aplicación vive en un monorepo. Publica cada carpeta como un servicio indepe
 ### 2) API Express en Render
 
 1. Render → **New → Web Service** → conecta el repositorio `barber-a`.
-2. Configura **Root Directory** `server`, **Runtime** Node, **Build Command** `npm install`, **Start Command** `npm start` y **Health Check Path** `/api/health`.
+2. Configura **Root Directory** como la raíz del repositorio (vacío o `.`), **Runtime** Node, **Build Command** `npm install`, **Start Command** `npm --workspace server start` y **Health Check Path** `/api/health`. No pongas Root Directory `server`: el repositorio usa npm workspaces y el lockfile está en la raíz.
 3. Añade estas variables en Environment:
    - `SUPABASE_URL`: URL base de Supabase, sin `/rest/v1/`.
    - `SUPABASE_SERVICE_ROLE_KEY`: clave `sb_secret_...` del proyecto, solo en Render.
