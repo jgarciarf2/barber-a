@@ -15,3 +15,7 @@ create table if not exists public.bookings (
 create index if not exists bookings_date_status_idx on public.bookings (appointment_date, status);
 alter table public.bookings enable row level security;
 -- No policies: browser clients cannot read/write bookings. The API uses service role server-side only.
+-- Supabase no siempre asigna permisos por defecto a tablas creadas desde SQL Editor.
+-- La API usa una clave secreta exclusivamente en Express; el navegador no recibe estos grants.
+grant select, insert, update, delete on table public.bookings to service_role;
+grant usage, select on all sequences in schema public to service_role;

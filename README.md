@@ -51,3 +51,49 @@ Ya están creados `server/.env` y `client/.env.local` para desarrollo local. Ree
 Para obtener las variables de Supabase: crea una cuenta en supabase.com, crea un proyecto, espera a que termine la configuración y abre **Project Settings → API**. Ejecuta `server/supabase/migrations/001_bookings.sql` en la opción **SQL Editor → New query → Run**. Mantén el proyecto en privado.
 
 No envíes los contenidos de `.env` por chat ni subas los archivos a Git. `.env` y `.env.local` deben permanecer locales; configura los mismos secretos en la sección Environment Variables del proveedor al desplegar. La clave pública `NEXT_PUBLIC_API_URL` sí es variable del frontend: local es `http://localhost:4000/api`, y en producción debe ser la URL pública del backend terminada en `/api`.
+
+Si Supabase devuelve `42501 permission denied for table bookings`, vuelve a ejecutar al final del SQL Editor los `GRANT` que aparecen al final de `server/supabase/migrations/001_bookings.sql`. Esto concede acceso a `service_role` (la clave secreta del backend); no activa acceso público ni quita RLS.
+
+
+Corte y barba ocupa 60 minutos (dos espacios de 30 min); los demás servicios ocupan 30. La disponibilidad evita mostrar turnos que se solapen con citas activas. La consulta pública de citas verifica nombre completo y celular juntos.
+
+## Publicar la aplicación (Vercel + Render)
+
+La aplicación vive en un monorepo. Publica cada carpeta como un servicio independiente; no despliegues el workspace raíz como una sola app.
+
+### 1) Antes de publicar
+
+- En GitHub revisa que `server/.env` y `client/.env.local` no estén en el repositorio. El `.gitignore` debe excluirlos. Si una clave secreta ya estuvo en GitHub, rótala antes del lanzamiento.
+- Supabase: el proyecto y la tabla deben estar activos. Si la interfaz está consultando datos, verifica que la URL base y la clave secret del servidor estén actualizadas en el hosting de API.
+
+### 2) API Express en Render
+
+1. Render → **New → Web Service** → conecta el repositorio `barber-a`.
+2. Configura **Root Directory** `server`, **Runtime** Node, **Build Command** `npm install`, **Start Command** `npm start` y **Health Check Path** `/api/health`.
+3. Añade estas variables en Environment:
+   - `SUPABASE_URL`: URL base de Supabase, sin `/rest/v1/`.
+   - `SUPABASE_SERVICE_ROLE_KEY`: clave `sb_secret_...` del proyecto, solo en Render.
+   - `ADMIN_EMAIL`: correo de acceso privado al panel.
+   - `ADMIN_PASSWORD`: contraseña fuerte del panel.
+   - `JWT_SECRET`: secreto aleatorio largo. Genera uno con `openssl rand -base64 48`.
+   - `CLIENT_ORIGIN`: temporalmente puedes usar el dominio de producción que asignará Vercel en el paso 3; vuelve a Render y cámbialo después del primer deploy.
+   - `NODE_ENV=production`.
+4. Crea el servicio. Espera el estado Live y copia su URL HTTPS, por ejemplo `https://juanjo-barber-api.onrender.com`. Comprueba que al abrir `/api/health` responde `{"ok":true}`.
+
+### 3) Frontend Next.js en Vercel
+
+1. Vercel → **Add New → Project** → importa el mismo repositorio.
+2. En **Root Directory**, selecciona `client`. Vercel debe detectar Next.js; deja build e instalación automáticos.
+3. En Environment Variables agrega `NEXT_PUBLIC_API_URL` con la URL del paso 2 terminada en `/api`, por ejemplo `https://juanjo-barber-api.onrender.com/api`.
+4. Despliega y copia el dominio público Vercel.
+
+### 4) CORS y comprobación final
+
+1. Regresa a Render → API → Environment y define `CLIENT_ORIGIN` con el origen exacto Vercel, sin barra final ni rutas, por ejemplo `https://barber-a.vercel.app`. Si usas un dominio personalizado, agrega también ese origen separado por coma.
+2. Guarda los cambios y espera que Render reinicie el servicio.
+3. En la URL de Vercel verifica: carga inicial, disponibilidad, creación/cancelación de una reserva, consulta por nombre + celular, y acceso al panel `/admin`. El resumen del panel calcula ingresos solo de citas confirmadas.
+4. Para cambios futuros, haz push a GitHub. Vercel y Render pueden redeplegar automáticamente sus respectivas carpetas.
+
+### Nota de Render Free
+
+El servicio gratuito puede entrar en suspensión por inactividad y tardar en despertar al primer acceso. Para reservas que deban estar disponibles de forma continua, consulta los planes y limitaciones actuales de Render antes de decidir mantener el servicio gratuito.
