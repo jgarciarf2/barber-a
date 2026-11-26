@@ -9,7 +9,7 @@ import { z } from 'zod';
 const required=['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','ADMIN_EMAIL','ADMIN_PASSWORD','JWT_SECRET'];
 for(const key of required) if(!process.env[key]) console.warn(`Missing env var: ${key}`);
 const db=process.env.SUPABASE_URL&&process.env.SUPABASE_SERVICE_ROLE_KEY?createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}}):null;
-const app=express();app.use(cors({origin:(process.env.CLIENT_ORIGIN||'http://localhost:3000').split(',')}));app.use(express.json({limit:'20kb'}));app.use('/api',rateLimit({windowMs:60_000,limit:100,standardHeaders:true,legacyHeaders:false}));
+const app=express();app.set('trust proxy',1);app.use(cors({origin:(process.env.CLIENT_ORIGIN||'http://localhost:3000').split(',')}));app.use(express.json({limit:'20kb'}));app.use('/api',rateLimit({windowMs:60_000,limit:100,standardHeaders:true,legacyHeaders:false}));
 const services={'Corte clásico':22000,'Corte y barba':28000,'Arreglo de barba':10000};
 const dateRe=/^\d{4}-\d{2}-\d{2}$/;const timeRe=/^\d{2}:\d{2}$/;
 function slots(date){const d=new Date(`${date}T12:00:00-05:00`),w=d.getDay();const ranges=w===0?[[9*60,13*60]]:w===6?[[8*60,12*60],[12*60+30,19*60]]:w>=1&&w<=5?[[9*60,12*60],[14*60,19*60]]:[];return ranges.flatMap(([from,to])=>{const out=[];for(let m=from;m<to;m+=30)out.push(`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`);return out})}
